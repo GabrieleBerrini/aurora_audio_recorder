@@ -1,0 +1,268 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #f6f1e7;
+  color: #111827;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  margin: 0;
+}
+
+
+.app {
+  max-width: 780px;
+  width: 100%;
+  background: #fbf7f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 18px 30px rgba(0,0,0,0.25);
+  border: 1px solid #e5dccb;
+}
+
+.section {
+  margin-bottom: 12px;
+  border-top: 1px solid #1f2937;
+  padding-top: 10px;
+}
+
+.waveform-row {
+  border-top: none;
+  padding-top: 0;
+}
+
+.rec-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Standard Buttons */
+button {
+  background: #2563eb;
+  border: none;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button:disabled {
+  background: #4b5563;
+  cursor: not-allowed;
+}
+
+#status {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.muted {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Rec/Stop Buttons */
+.btn-round-rec {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #dc2626;
+  position: relative;
+  padding: 0;
+}
+.btn-round-rec::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  background: #fecaca;
+  border-radius: 50%;
+}
+.btn-square-stop {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #dc2626;
+  position: relative;
+  padding: 0;
+}
+.btn-square-stop::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  background: #fecaca;
+  border-radius: 4px;
+}
+
+/* Knobs */
+.knobs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  justify-items: center;
+}
+.knob-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f3ede2;        /* panna scuro */
+  border-radius: 10px;
+  padding: 10px 4px;
+  border: 1px solid #e0d7c6;
+  width: 100%;
+  max-width: 140px;
+}
+
+
+.knob {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ffffff,
+    #d9cfbf
+  ); /* avorio */
+  position: relative;
+  cursor: pointer;
+  transform: rotate(-135deg);
+  transition: box-shadow 0.1s ease;
+  box-shadow:
+    0 0 0 1px #cfc5b3,
+    0 6px 14px rgba(0,0,0,0.25);
+}
+
+.knob::after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 22px;
+  background: #6b5f4a;   /* marrone caldo */
+  border-radius: 4px;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.knob:active {
+  box-shadow: 0 0 0 1px #38bdf8, 0 4px 14px rgba(56,189,248,0.5);
+}
+.knob-label {
+  font-size: 12px;
+  margin-top: 6px;
+}
+.knob-value {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* Presets */
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  border-top: none;
+  padding-top: 4px;
+}
+.preset {
+  background: #10b981;
+  text-align: center;
+  width: 100%;
+  padding: 8px 0;
+}
+
+/* Download Buttons */
+.download-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.download-row button {
+  min-width: 160px;
+}
+
+/* Drive buttons */
+.drive-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.drive-row button {
+  min-width: 180px;
+}
+
+/* Waveform Canva */
+canvas#waveform {
+  width: 100%;
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #111827;
+}
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.logo {
+  height: 450px;   /* piccolo */
+  width: auto;
+  opacity: 1.0;
+}
+.waveform-wrapper{
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.logo-side{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo{
+  height: 250px;   /* grande */
+  width: auto;
+  transform: translateY(-23px);
+}
+
+canvas#waveform{
+  flex: 1;         /* la waveform prende lo spazio che resta */
+}
+
+.waveform-container {
+  position: relative;
+  width: 100%;
+}
+
+.logo-overlay {
+  position: absolute;
+  top: -60px;              /* regola questa per alzare/abbassare */
+  left: 50%;
+  transform: translateX(-50%);
+  height: 220px;            /* dimensione logo */
+  pointer-events: none;     /* non blocca click sul canvas */
+  z-index: 10;
+}
+
+canvas#waveform {
+  width: 100%;
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #111827;
+}
+.waveform-container {
+  position: relative;
+  width: 100%;
+  padding-top: 160px;   /* SPAZIO riservato al logo */
+}
