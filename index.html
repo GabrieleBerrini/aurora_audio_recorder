@@ -1,57 +1,52 @@
 <!DOCTYPE html>
 <html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audio Processor</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Google Identity Services (OAuth) for Drive upload -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Audio Recorder</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- For drive upload -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
 
-  <script src="https://cdn.jsdelivr.net/npm/audiobuffer-to-wav@1.0.0/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/audiobuffer-to-wav@1.0.0/index.min.js"></script>
 
-  <div class="app">
-    <div class="section waveform-row waveform-wrapper">
+    <div class="app">
+        <div class="waveform-container">
+          <img src="logo.png" alt="Aurora Logo" class="logo">
+          <canvas id="waveform" width="500" height="150"></canvas>
+        </div>
 
-  <div class="waveform-container">
-    <img src="logo.png" alt="Aurora Logo" class="logo-overlay">
-    <canvas id="waveform" width="500" height="150"></canvas>
-    
-  </div>
+      <div class="section rec-row">
+        <div class="block">
+          <button id="btnStartRec" class="btn-round-rec"></button>
+          <button id="btnStopRec" class="btn-square-stop" disabled></button>
+          <span id="status">Ready</span>
+        </div>
 
-
-</div>
-
-    <div class="section rec-row">
-      <div class="block">
-        <button id="btnStartRec" class="btn-round-rec"></button>
-        <button id="btnStopRec" class="btn-square-stop" disabled></button>
-        <span id="status">Ready</span>
+        <div class="block">
+          <audio id="player" controls></audio>
+          <button id="btnPlayProcessed" disabled>Play with Effects</button>
+        </div>
       </div>
-      <div class="block">
-        <audio id="player" controls></audio>
-        <button id="btnPlayProcessed" disabled>Play with Effects</button>
+
+      <div class="section knobs-grid" id="knobsContainer"></div>
+
+      <div class="section preset-row" id="presetsContainer"></div>
+
+      <div class="section download-row">
+        <button id="btnDownloadWav" disabled>Download WAV</button>
+        <button id="btnDownloadProcessedWav" disabled>Download WAV with Effects</button>
+      </div>
+
+      <div class="section drive-row">
+        <button id="btnAuthDrive">Google Drive Authorization</button>
+        <button id="btnUploadWav" disabled>Upload WAV to Drive</button>
+        <button id="btnUploadProcessedWav" disabled>Upload WAV with Effects to Drive</button>
+        <span id="status">Drive: not authorized</span>
       </div>
     </div>
-
-    <div class="section knobs-grid" id="knobsContainer"></div>
-
-    <div class="section preset-row" id="presetsContainer"></div>
-
-    <div class="section download-row">
-      <button id="btnDownloadWav" disabled>Download WAV Mic</button>
-      <button id="btnDownloadProcessedWav" disabled>Download WAV with Effects</button>
-    </div>
-
-    <div class="section drive-row">
-      <button id="btnAuthDrive">Autorizza Google Drive</button>
-      <button id="btnUploadWav" disabled>Carica WAV Mic su Drive</button>
-      <button id="btnUploadProcessedWav" disabled>Carica WAV Effects su Drive</button>
-      <span id="driveStatus" class="muted">Drive: non autorizzato</span>
-    </div>
-  </div>
     <script src="script.js"></script>
   </body>
 </html>

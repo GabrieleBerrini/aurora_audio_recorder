@@ -11,7 +11,7 @@ let audioCtx, lowpassFilter, highpassFilter, delayNode, delayFeedback,
 let recStartTime = 0;
 let recTimerId = null;
 
-// Track of the active processed source to avoid overlapping playback
+// Track of the active processed source to avoid overlapping
 let activeProcessedSource = null;
 let mediaElementSource = null;
 
@@ -79,7 +79,7 @@ const presetsConfig = {
 
 // Parameter values
 const paramValues = {
-  gain: 0.5,        // 50% (perché ora gain è 0–100 come UI)
+  gain: 0.5,
   pitch: 1.00,
   lowpass: 20000,
   highpass: 10,
@@ -89,17 +89,11 @@ const paramValues = {
 
 
 // ======================================================================
-// GOOGLE DRIVE (USER'S DRIVE) - OAUTH + UPLOAD
+// GOOGLE DRIVE (OAUTH, UPLOAD)
 // ======================================================================
 
-// >>> INSERISCI QUI IL TUO CLIENT ID (OAuth Web Client) <<<
-// Esempio: "1234567890-abc123def456.apps.googleusercontent.com"
 const GOOGLE_CLIENT_ID = "704802154881-t0b03q9dc11ijifmopp1f662rnh4hiuf.apps.googleusercontent.com";
-
-// Cartella da creare automaticamente nel Drive dell'utente
 const DRIVE_FOLDER_NAME = "Aurora Registrazioni";
-
-// Scope minimo consigliato: consente alla tua app di creare/gestire i file che crea.
 const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
 
 let tokenClient = null;
