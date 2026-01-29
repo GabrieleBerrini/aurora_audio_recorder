@@ -4,10 +4,7 @@
 
 // Base recording state
 let mediaRecorder, recordedChunks = [], audioBlob = null, audioUrl = null;
-let audioCtx, lowpassFilter, highpassFilter, delayNode, delayFeedback,
-    reverbConvolver, dryGain, wetGain, masterGain, analyser, dataArray,
-    animationId;
-
+let audioCtx, lowpassFilter, highpassFilter, delayNode, delayFeedback, reverbConvolver, dryGain, wetGain, masterGain, analyser, dataArray, animationId;
 let recStartTime = 0;
 let recTimerId = null;
 
@@ -43,7 +40,7 @@ const knobsContainer = document.getElementById("knobsContainer");
 const presetsContainer = document.getElementById("presetsContainer");
 
 // ======================================================================
-// CONFIGURATION (KNOBS, PRESETS, PARAMETERS VALUES)
+// CONFIGURATION (KNOBS, PARAMETER VALUES, PRESETS)
 // ======================================================================
 
 // Knobs configuration
@@ -52,10 +49,19 @@ const knobsConfig = [
   { id: "pitch",     label: "Pitch",   min: 0.5, max: 2.0,   step: 0.01, value: 1.00 },
   { id: "lowpass",   label: "Lowpass Filter", min: 200, max: 20000, step: 1,    value: 20000 },
   { id: "highpass",  label: "Highpass Filter",min: 10,  max: 5000,  step: 1,    value: 10 },
-  { id: "delayTime", label: "Delay",   min: 0,   max: 0.5,   step: 0.01, value: 0 },    // 0–500 ms
+  { id: "delayTime", label: "Delay",   min: 0,   max: 0.5,   step: 0.01, value: 0 },
   { id: "reverbMix", label: "Reverb",  min: 0,   max: 1,     step: 0.1,  value: 0.3 }
 ];
 
+// Parameter initial values
+const paramValues = {
+  gain: 0.5,
+  pitch: 1.00,
+  lowpass: 20000,
+  highpass: 10,
+  delayTime: 0,
+  reverbMix: 0.3
+};
 
 // Presets configuration
 const presetsConfig = {
@@ -77,22 +83,11 @@ const presetsConfig = {
   }
 };
 
-// Parameter values
-const paramValues = {
-  gain: 0.5,
-  pitch: 1.00,
-  lowpass: 20000,
-  highpass: 10,
-  delayTime: 0,
-  reverbMix: 0.3
-};
-
-
 // ======================================================================
-// GOOGLE DRIVE (OAUTH, UPLOAD)
+// GOOGLE DRIVE (AUTHORITAZION, UPLOAD)
 // ======================================================================
 
-const GOOGLE_CLIENT_ID = "704802154881-t0b03q9dc11ijifmopp1f662rnh4hiuf.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "704802154881-t0b03q9dc11ijifmopp1f662rnh4hiuf.apps.googleusercontent.com"; 
 const DRIVE_FOLDER_NAME = "Aurora Registrazioni";
 const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
 
@@ -105,7 +100,7 @@ function setDriveStatus(msg) {
 }
 
 function canUploadNow() {
-  return !!driveAccessToken && !!audioBlob;
+  return !!driveAccessToken && !!audioBlob; // Double negation to convert the element in the equivalent boolean value
 }
 
 function refreshDriveButtons() {
@@ -114,35 +109,34 @@ function refreshDriveButtons() {
   if (btnUploadProcessedWav) btnUploadProcessedWav.disabled = !ok;
 }
 
-// Initialize Google Identity Services token client
+// Initialize Google Drive authorization
 function initDriveAuth() {
-  if (!btnAuthDrive || !window.google || !google.accounts || !google.accounts.oauth2) {
-    // GIS script non ancora caricato (async defer) oppure mancano i bottoni
+  if (!btnAuthDrive || !window.google || !google.accounts || !google.accounts.oauth2) { // To verify the existence of the element imported by Google src in the HTML
     return;
   }
   if (tokenClient) return;
+
+  // To notify just in case the client ID must be changed or set
   if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR_CLIENT_ID_HERE")) {
     setDriveStatus("Drive: inserisci GOOGLE_CLIENT_ID in script.js");
     btnAuthDrive.disabled = true;
     return;
   }
 
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: DRIVE_SCOPES,
-    callback: (resp) => {
+  btnAuthDrive.addEventListener("click", () => {
+    setDriveStatus("Drive: in autorizzazione...");
+    tokenClient.requestAccessToken({ prompt: "consent" }); // This function generates the Google consent pop-up
+  });
+
+  tokenClient = google.accounts.oauth2.initTokenClient({client_id: GOOGLE_CLIENT_ID, scope: DRIVE_SCOPES,
+    callback: (resp) => { // This function is called when requestAccessToken completes and passes the value of resp
       driveAccessToken = resp.access_token;
-      driveFolderIdCache = null; // il token è nuovo: forza refresh ricerca cartella
+      driveFolderIdCache = null; // To force the token to be requested again next time (every time you initialize the web app you have to get Google Drive authorization)
       setDriveStatus("Drive: autorizzato");
       refreshDriveButtons();
     },
   });
 
-  btnAuthDrive.addEventListener("click", () => {
-    setDriveStatus("Drive: in autorizzazione...");
-    // Chiedi un access token (Google gestisce eventuale consenso)
-    tokenClient.requestAccessToken({ prompt: "consent" });
-  });
 }
 
 // Prova a inizializzare non appena possibile (script GIS è async)

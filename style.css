@@ -120,18 +120,12 @@ button:disabled {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle at 30% 30%,
-    #ffffff,
-    #d9cfbf
-  ); /* avorio */
+  background: radial-gradient(circle at 30% 30%, #ffffff, #d9cfbf);
   position: relative;
   cursor: pointer;
   transform: rotate(-135deg);
   transition: box-shadow 0.1s ease;
-  box-shadow:
-    0 0 0 1px #cfc5b3,
-    0 6px 14px rgba(0,0,0,0.25);
+  box-shadow: 0 0 0 1px #cfc5b3, 0 6px 14px rgba(0,0,0,0.25);
 }
 .knob::after {
   content: "";

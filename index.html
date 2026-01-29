@@ -1,33 +1,33 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en"> <!-- To set the language -->
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"> <!-- Not to have problems with special characters -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Responsive design: in this case the content of the web page adapts to the width of the screen with no initial zoom (1:1 scale) -->
     <title>Aurora Audio Recorder</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script> <!-- defer = keyword to load the script after the HTML is fully loaded (the loading follows the defer order); async = keyword to import the script independently from the others-->
+    <script src="https://cdn.jsdelivr.net/npm/audiobuffer-to-wav@1.0.0/index.min.js" defer></script>
+    <script src="script.js" defer></script>
   </head>
+
   <body>
-
-    <script src="https://cdn.jsdelivr.net/npm/audiobuffer-to-wav@1.0.0/index.min.js"></script>
-
     <div class="app">
         <div class="waveform-container">
           <img src="logo.png" alt="Aurora Logo" class="logo">
           <canvas id="waveform" width="500" height="150"></canvas>
         </div>
 
-      <div class="section rec-row">
-        <div class="block">
-          <button id="btnStartRec" class="btn-round-rec"></button>
-          <button id="btnStopRec" class="btn-square-stop" disabled></button>
-          <span id="status">Ready</span>
-        </div>
+        <div class="section rec-row">
+          <div class="block">
+            <button id="btnStartRec" class="btn-round-rec"></button>
+            <button id="btnStopRec" class="btn-square-stop" disabled></button>
+            <span id="status">Ready</span>
+          </div>
 
-        <div class="block">
-          <audio id="player" controls></audio>
-          <button id="btnPlayProcessed" disabled>Play with Effects</button>
-        </div>
+          <div class="block">
+            <audio id="player" controls></audio>
+            <button id="btnPlayProcessed" disabled>Play with Effects</button>
+          </div>
       </div>
 
       <div class="section knobs-grid" id="knobsContainer"></div>
@@ -46,6 +46,5 @@
         <span id="status">Drive: not authorized</span>
       </div>
     </div>
-    <script src="script.js"></script>
   </body>
 </html>
