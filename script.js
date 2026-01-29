@@ -139,10 +139,10 @@ function initDriveAuth() {
 
 }
 
-// Prova a inizializzare non appena possibile (script GIS è async)
+// To initialize Google Drive authorization immediately after the page is fully loaded
 window.addEventListener("load", () => {
   initDriveAuth();
-  // Se GIS si carica dopo, riprova per un breve periodo
+  // To let the initialization retry in case of failure (due to the async loading)
   let tries = 0;
   const t = setInterval(() => {
     initDriveAuth();
