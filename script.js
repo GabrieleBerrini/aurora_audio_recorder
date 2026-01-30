@@ -1,5 +1,5 @@
 // ======================================================================
-// STATE & GLOBAL VARIABLES
+// STATE AND GLOBAL VARIABLES
 // ======================================================================
 
 // Base recording state
@@ -7,14 +7,21 @@ let mediaRecorder, recordedChunks = [], audioBlob = null, audioUrl = null;
 let audioCtx, lowpassFilter, highpassFilter, delayNode, delayFeedback, reverbConvolver, dryGain, wetGain, masterGain, analyser, dataArray, animationId;
 let recStartTime = 0;
 let recTimerId = null;
-
-// Track of the active processed source to avoid overlapping
 let activeProcessedSource = null;
 let mediaElementSource = null;
 
-// ======================================================================
-// UI
-// ======================================================================
+// Google Drive state
+const GOOGLE_CLIENT_ID = "704802154881-t0b03q9dc11ijifmopp1f662rnh4hiuf.apps.googleusercontent.com"; 
+const DRIVE_FOLDER_NAME = "Aurora Registrazioni";
+const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
+
+let tokenClient = null;
+let driveAccessToken = null;
+let driveFolderIdCache = null;
+
+// Waveform canva
+const waveformCanvas = document.getElementById("waveform");
+const wfCtx = waveformCanvas.getContext("2d");
 
 // Fixed UI elements
 const btnStartRec = document.getElementById("btnStartRec");
@@ -25,23 +32,15 @@ const btnDownloadProcessedWav = document.getElementById("btnDownloadProcessedWav
 const statusEl = document.getElementById("status");
 const player = document.getElementById("player");
 
+// Dynamic UI containers
+const knobsContainer = document.getElementById("knobsContainer");
+const presetsContainer = document.getElementById("presetsContainer");
+
 // Drive UI
 const btnAuthDrive = document.getElementById("btnAuthDrive");
 const btnUploadWav = document.getElementById("btnUploadWav");
 const btnUploadProcessedWav = document.getElementById("btnUploadProcessedWav");
 const driveStatusEl = document.getElementById("driveStatus");
-
-// Waveform canva
-const waveformCanvas = document.getElementById("waveform");
-const wfCtx = waveformCanvas.getContext("2d");
-
-// Dynamic UI containers
-const knobsContainer = document.getElementById("knobsContainer");
-const presetsContainer = document.getElementById("presetsContainer");
-
-// ======================================================================
-// CONFIGURATION (KNOBS, PARAMETER VALUES, PRESETS)
-// ======================================================================
 
 // Knobs configuration
 const knobsConfig = [
@@ -84,82 +83,6 @@ const presetsConfig = {
 };
 
 // ======================================================================
-// GOOGLE DRIVE (AUTHORITAZION, UPLOAD)
-// ======================================================================
-
-const GOOGLE_CLIENT_ID = "704802154881-t0b03q9dc11ijifmopp1f662rnh4hiuf.apps.googleusercontent.com"; 
-const DRIVE_FOLDER_NAME = "Aurora Registrazioni";
-const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
-
-let tokenClient = null;
-let driveAccessToken = null;
-let driveFolderIdCache = null;
-
-function setDriveStatus(msg) {
-  if (driveStatusEl) driveStatusEl.textContent = msg;
-}
-
-function canUploadNow() {
-  return !!driveAccessToken && !!audioBlob; // Double negation to convert the element in the equivalent boolean value
-}
-
-function refreshDriveButtons() {
-  const ok = canUploadNow();
-  if (btnUploadWav) btnUploadWav.disabled = !ok;
-  if (btnUploadProcessedWav) btnUploadProcessedWav.disabled = !ok;
-}
-
-// Initialize Google Drive authorization
-function initDriveAuth() {
-  if (!btnAuthDrive || !window.google || !google.accounts || !google.accounts.oauth2) { // To verify the existence of the element imported by Google src in the HTML
-    return;
-  }
-  if (tokenClient) return;
-
-  // To notify just in case the client ID must be changed or set
-  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR_CLIENT_ID_HERE")) {
-    setDriveStatus("Drive: inserisci GOOGLE_CLIENT_ID in script.js");
-    btnAuthDrive.disabled = true;
-    return;
-  }
-
-  btnAuthDrive.addEventListener("click", () => {
-    setDriveStatus("Drive: in autorizzazione...");
-    tokenClient.requestAccessToken({ prompt: "consent" }); // This function generates the Google consent pop-up
-  });
-
-  tokenClient = google.accounts.oauth2.initTokenClient({client_id: GOOGLE_CLIENT_ID, scope: DRIVE_SCOPES,
-    callback: (resp) => { // This function is called when requestAccessToken completes and passes the value of resp
-      driveAccessToken = resp.access_token;
-      driveFolderIdCache = null; // To force the token to be requested again next time (every time you initialize the web app you have to get Google Drive authorization)
-      setDriveStatus("Drive: autorizzato");
-      refreshDriveButtons();
-    },
-  });
-
-}
-
-// To initialize Google Drive authorization immediately after the page is fully loaded
-window.addEventListener("load", () => {
-  initDriveAuth();
-  // To let the initialization retry in case of failure (due to the async loading)
-  let tries = 0;
-  const t = setInterval(() => {
-    initDriveAuth();
-    tries++;
-    if (tokenClient || tries > 40) clearInterval(t);
-  }, 250);
-});
-
-// ======================================================================
-// KNOB UTILITIES
-// ======================================================================
-
-const lerp = (a, b, t) => a + (b - a) * t;
-const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
-const valueToAngle = (v, min, max) => -135 + ((v - min) / (max - min)) * 270;
-
-// ======================================================================
 // DYNAMIC UI CREATION (KNOBS & PRESETS)
 // ======================================================================
 
@@ -184,8 +107,8 @@ function createKnobs() {
     valueEl.className = "knob-value";
     valueEl.id = cfg.id + "Val";
     valueEl.textContent = (cfg.id === "lowpass" || cfg.id === "highpass")
-      ? Math.round(cfg.value)
-      : cfg.value.toFixed(2);
+      ? Math.round(cfg.value) // Condition for frequency knobs (integer values)
+      : cfg.value.toFixed(2); // Other knobs (float values with two decimals)
 
     wrapper.appendChild(knob);
     wrapper.appendChild(label);
@@ -285,6 +208,138 @@ function createReverbImpulse(context, duration, decay) {
 }
 
 // ======================================================================
+// KNOB BEHAVIOR
+// ======================================================================
+
+// Knob utility functions
+const lerp = (a, b, t) => a + (b - a) * t; // Linear interpolation for knobs angle-to-value conversion
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v)); // To set values within a range
+const valueToAngle = (v, min, max) => -135 + ((v - min) / (max - min)) * 270;
+
+// Knob behavior
+const knobElems = document.querySelectorAll(".knob");
+
+knobElems.forEach(knob => {
+  const id = knob.dataset.target;
+  const min = +knob.dataset.min;
+  const max = +knob.dataset.max;
+  const step = +knob.dataset.step || 0.01;
+
+  let value = paramValues[id];
+  let angle = valueToAngle(value, min, max);
+  let dragging = false;
+  let startY, startAngle;
+
+  knob.style.transform = `rotate(${angle}deg)`;
+
+let startMouseAngle = 0;
+
+function mouseAngleDeg(ev, element) {
+  const r = element.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  const dx = ev.clientX - cx;
+  const dy = ev.clientY - cy;
+  return Math.atan2(dy, dx) * (180 / Math.PI);
+}
+
+knob.addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  dragging = true;
+
+  lastMouseAngle = mouseAngleDeg(e, knob);
+
+
+  document.body.style.userSelect = "none";
+});
+
+window.addEventListener("mouseup", () => {
+  dragging = false;
+  document.body.style.userSelect = "";
+});
+
+window.addEventListener("mousemove", (e) => {
+  if (!dragging) return;
+
+  const currentMouseAngle = mouseAngleDeg(e, knob);
+  let delta = currentMouseAngle - lastMouseAngle;
+
+if (delta > 180) delta -= 360;
+if (delta < -180) delta += 360;
+
+const speed = e.shiftKey ? 0.35 : 1.0;
+angle = clamp(angle + delta * speed, -135, 135);
+
+lastMouseAngle = currentMouseAngle;
+
+
+  knob.style.transform = `rotate(${angle}deg)`;
+
+  const t = (angle + 135) / 270;
+  const raw = lerp(min, max, t);
+  const v = Math.round(raw / step) * step;
+
+  value = v;
+  updateParam(id, v);
+  updateValLabel(id, v);
+});
+
+
+  updateValLabel(id, value);
+  updateParam(id, value);
+});
+
+// Application of the presets
+function applyPreset(name) {
+  initAudioGraph();
+
+  const preset = presetsConfig[name];
+  if (!preset) return;
+
+  const p = preset.params;
+
+  const knobs = document.querySelectorAll(".knob");
+
+  knobs.forEach(k => {
+  const id = k.dataset.target;
+
+  if (id === "gain") return;
+
+  if (!(id in p)) return;
+
+  const val = p[id];
+
+  paramValues[id] = val;
+  updateParam(id, val);
+  updateValLabel(id, val);
+
+  const min = +k.dataset.min;
+  const max = +k.dataset.max;
+  k.style.transform = `rotate(${valueToAngle(val, min, max)}deg)`;
+});
+}
+
+function updateValLabel(id, v) {
+  const el = document.getElementById(id + "Val");
+  if (!el) return;
+  if (id === "lowpass" || id === "highpass") el.textContent = Math.round(v);
+  else el.textContent = v.toFixed(2);
+}
+
+function updateParam(id, v) {
+  paramValues[id] = v;
+
+  if (id === "gain" && masterGain) masterGain.gain.value = v / 100;
+  else if (id === "lowpass" && lowpassFilter) lowpassFilter.frequency.value = v;
+  else if (id === "highpass" && highpassFilter) highpassFilter.frequency.value = v;
+  else if (id === "delayTime" && delayNode) delayNode.delayTime.value = v;
+  else if (id === "reverbMix" && dryGain && wetGain) {
+    wetGain.gain.value = v;
+    dryGain.gain.value = 1 - v;
+  }
+}
+
+// ======================================================================
 // WAVEFORM
 // ======================================================================
 
@@ -308,7 +363,7 @@ function drawWaveform() {
   let x = 0;
 
   for (let i = 0; i < dataArray.length; i++) {
-    const v = dataArray[i] / 128.0;
+    const v = dataArray[i] / 128.0; // Normalize between 0 and 2 to adapt to canvas height (dataArray elements can have values between 0 and 255)
     const y = v * h / 2;
     if (i === 0) wfCtx.moveTo(x, y);
     else wfCtx.lineTo(x, y);
@@ -319,32 +374,9 @@ function drawWaveform() {
   wfCtx.stroke();
 }
 
-// ======================================================================
-// PLAYER EVENTS (RAW PLAYBACK + WAVEFORM)
-// ======================================================================
-
-player.addEventListener("play", () => {
-  initAudioGraph();
-  connectPlayerToAnalyser();
-  if (!animationId) drawWaveform();
-
-  // Stop processed source if it is playing, to avoid overlaps
-  if (activeProcessedSource) {
-    try {
-      activeProcessedSource.stop();
-    } catch (e) {}
-    activeProcessedSource = null;
-  }
-
-  // Re-enable "Play with Effects" (we are playing the dry version)
-  btnPlayProcessed.disabled = false;
-});
-
-player.addEventListener("ended", () => {
-  if (animationId) {
-    cancelAnimationFrame(animationId);
-    animationId = null;
-  }
+// Stop waveform animation before leaving the page
+window.addEventListener("beforeunload", () => {
+  if (animationId) cancelAnimationFrame(animationId);
 });
 
 // ======================================================================
@@ -372,18 +404,17 @@ btnStartRec.addEventListener("click", async () => {
       btnDownloadProcessedWav.disabled = false;
       statusEl.textContent = "The Recording Is Ready";
 
-      // Drive buttons (se l'utente ha già autorizzato)
       refreshDriveButtons();
     };
 
     mediaRecorder.start();
     recStartTime = performance.now();
 
-if (recTimerId) clearInterval(recTimerId);
-recTimerId = setInterval(() => {
-  const elapsed = (performance.now() - recStartTime) / 1000;
-  statusEl.textContent = `Recording... ${elapsed.toFixed(1)}s`;
-}, 100);
+    if (recTimerId) clearInterval(recTimerId);
+    recTimerId = setInterval(() => {
+    const elapsed = (performance.now() - recStartTime) / 1000;
+    statusEl.textContent = `Recording... ${elapsed.toFixed(1)}s`;
+    }, 100);
 
     btnStartRec.disabled = true;
     btnStopRec.disabled = false;
@@ -394,7 +425,6 @@ recTimerId = setInterval(() => {
   }
 });
 
-// Stop microphone recording
 btnStopRec.addEventListener("click", () => {
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
@@ -407,6 +437,32 @@ btnStopRec.addEventListener("click", () => {
 
   btnStartRec.disabled = false;
   btnStopRec.disabled = true;
+});
+
+// ======================================================================
+// PLAYER EVENTS
+// ======================================================================
+
+player.addEventListener("play", () => {
+  initAudioGraph();
+  connectPlayerToAnalyser();
+  if (!animationId) drawWaveform();
+
+  if (activeProcessedSource) {
+    try {
+      activeProcessedSource.stop();
+    } catch (e) {}
+    activeProcessedSource = null;
+  }
+
+  btnPlayProcessed.disabled = false;
+});
+
+player.addEventListener("ended", () => {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
 });
 
 // ======================================================================
@@ -424,6 +480,18 @@ btnDownloadWav.addEventListener("click", async () => {
 
   downloadBlob(wavBlob, "Recording.wav");
 });
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.style.display = "none";
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
 
 // ======================================================================
 // PLAYBACK WITH EFFECTS
@@ -469,7 +537,7 @@ btnPlayProcessed.addEventListener("click", async () => {
 });
 
 // ======================================================================
-// DOWNLOAD PROCESSED WAV
+// DOWNLOAD WAV WITH EFFECTS
 // ======================================================================
 
 btnDownloadProcessedWav.addEventListener("click", async () => {
@@ -539,63 +607,102 @@ btnDownloadProcessedWav.addEventListener("click", async () => {
 });
 
 // ======================================================================
-// OTHER FUNCTIONS
+// GOOGLE DRIVE AUTHORIZATION
 // ======================================================================
 
-// Download a Blob as a file
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.style.display = "none";
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-}
+function initDriveAuth() {
+  if (!btnAuthDrive || !window.google || !google.accounts || !google.accounts.oauth2) { // To verify the existence of the element imported by Google src in the HTML
+    return;
+  }
+  if (tokenClient) return;
 
-// ======================================================================
-// DRIVE HELPERS
-// ======================================================================
-
-async function driveFetch(url, options = {}) {
-  if (!driveAccessToken) throw new Error("Drive non autorizzato");
-  const headers = new Headers(options.headers || {});
-  headers.set("Authorization", `Bearer ${driveAccessToken}`);
-  return fetch(url, { ...options, headers });
-}
-
-async function getOrCreateAuroraFolderId() {
-  if (driveFolderIdCache) return driveFolderIdCache;
-
-  // Cerca cartella per nome (My Drive). Se esiste, prende la prima.
-  const q = `name='${DRIVE_FOLDER_NAME.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const listUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
-
-  const r = await driveFetch(listUrl);
-  if (!r.ok) throw new Error(await r.text());
-  const data = await r.json();
-  if (data.files && data.files.length) {
-    driveFolderIdCache = data.files[0].id;
-    return driveFolderIdCache;
+  // To notify just in case the client ID must be changed or set
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR_CLIENT_ID_HERE")) {
+    setDriveStatus("Drive: inserisci GOOGLE_CLIENT_ID in script.js");
+    btnAuthDrive.disabled = true;
+    return;
   }
 
-  // Crea cartella
-  const createUrl = "https://www.googleapis.com/drive/v3/files";
-  const body = {
-    name: DRIVE_FOLDER_NAME,
-    mimeType: "application/vnd.google-apps.folder",
-  };
-  const c = await driveFetch(createUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+  btnAuthDrive.addEventListener("click", () => {
+    setDriveStatus("Drive: in autorizzazione...");
+    tokenClient.requestAccessToken({ prompt: "consent" }); // This function generates the Google consent pop-up
   });
-  if (!c.ok) throw new Error(await c.text());
-  const created = await c.json();
-  driveFolderIdCache = created.id;
-  return driveFolderIdCache;
+
+  tokenClient = google.accounts.oauth2.initTokenClient({client_id: GOOGLE_CLIENT_ID, scope: DRIVE_SCOPES,
+    callback: (resp) => { // This function is called when requestAccessToken completes and passes the value of resp
+      driveAccessToken = resp.access_token;
+      driveFolderIdCache = null; // To force the token to be requested again next time (every time you initialize the web app you have to get Google Drive authorization)
+      setDriveStatus("Drive: autorizzato");
+      refreshDriveButtons();
+    },
+  });
+
+}
+
+// To initialize Google Drive authorization immediately after the page is fully loaded
+window.addEventListener("load", () => {
+  initDriveAuth();
+  // To let the initialization retry in case of failure (due to the async loading)
+  let tries = 0;
+  const t = setInterval(() => {
+    initDriveAuth();
+    tries++;
+    if (tokenClient || tries > 40) clearInterval(t);
+  }, 250);
+});
+
+function setDriveStatus(msg) {
+  if (driveStatusEl) driveStatusEl.textContent = msg;
+}
+
+function refreshDriveButtons() {
+  const ok = canUploadNow();
+  if (btnUploadWav) btnUploadWav.disabled = !ok;
+  if (btnUploadProcessedWav) btnUploadProcessedWav.disabled = !ok;
+}
+
+function canUploadNow() {
+  return !!driveAccessToken && !!audioBlob; // Double negation to convert the element in the equivalent boolean value
+}
+
+// ======================================================================
+// GOOGLE DRIVE UPLOAD
+// ======================================================================
+
+if (btnUploadWav) {
+  btnUploadWav.addEventListener("click", async () => {
+    try {
+      setDriveStatus("Drive: preparo upload...");
+      const folderId = await getOrCreateAuroraFolderId();
+      const wavBlob = await getRawWavBlob();
+      const filename = safeTimestampName("wav");
+      setDriveStatus("Drive: caricamento WAV Mic...");
+      const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
+      setDriveStatus(`Drive: caricato (${filename})`);
+      console.log("Drive fileId (mic):", fileId);
+    } catch (e) {
+      console.error(e);
+      setDriveStatus("Drive: errore upload (vedi console)");
+    }
+  });
+}
+
+if (btnUploadProcessedWav) {
+  btnUploadProcessedWav.addEventListener("click", async () => {
+    try {
+      setDriveStatus("Drive: preparo upload...");
+      const folderId = await getOrCreateAuroraFolderId();
+      const wavBlob = await getProcessedWavBlob();
+      const filename = safeTimestampName("wav").replace("Aurora_", "Aurora_fx_");
+      setDriveStatus("Drive: caricamento WAV Effects...");
+      const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
+      setDriveStatus(`Drive: caricato (${filename})`);
+      console.log("Drive fileId (fx):", fileId);
+    } catch (e) {
+      console.error(e);
+      setDriveStatus("Drive: errore upload (vedi console)");
+    }
+  });
 }
 
 function safeTimestampName(ext) {
@@ -639,6 +746,45 @@ async function uploadBlobToDriveResumable(blob, filename, mimeType, folderId) {
   if (!put.ok) throw new Error(await put.text());
   const data = await put.json();
   return data.id;
+}
+
+async function getOrCreateAuroraFolderId() {
+  if (driveFolderIdCache) return driveFolderIdCache;
+
+  // Cerca cartella per nome (My Drive). Se esiste, prende la prima.
+  const q = `name='${DRIVE_FOLDER_NAME.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const listUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
+
+  const r = await driveFetch(listUrl);
+  if (!r.ok) throw new Error(await r.text());
+  const data = await r.json();
+  if (data.files && data.files.length) {
+    driveFolderIdCache = data.files[0].id;
+    return driveFolderIdCache;
+  }
+
+  // Crea cartella
+  const createUrl = "https://www.googleapis.com/drive/v3/files";
+  const body = {
+    name: DRIVE_FOLDER_NAME,
+    mimeType: "application/vnd.google-apps.folder",
+  };
+  const c = await driveFetch(createUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!c.ok) throw new Error(await c.text());
+  const created = await c.json();
+  driveFolderIdCache = created.id;
+  return driveFolderIdCache;
+}
+
+async function driveFetch(url, options = {}) {
+  if (!driveAccessToken) throw new Error("Drive non autorizzato");
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", `Bearer ${driveAccessToken}`);
+  return fetch(url, { ...options, headers });
 }
 
 async function getRawWavBlob() {
@@ -711,172 +857,3 @@ async function getProcessedWavBlob() {
   const wavBuffer = audioBufferToWav(rendered);
   return new Blob([wavBuffer], { type: "audio/wav" });
 }
-
-// Upload buttons
-if (btnUploadWav) {
-  btnUploadWav.addEventListener("click", async () => {
-    try {
-      setDriveStatus("Drive: preparo upload...");
-      const folderId = await getOrCreateAuroraFolderId();
-      const wavBlob = await getRawWavBlob();
-      const filename = safeTimestampName("wav");
-      setDriveStatus("Drive: caricamento WAV Mic...");
-      const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
-      setDriveStatus(`Drive: caricato (${filename})`);
-      console.log("Drive fileId (mic):", fileId);
-    } catch (e) {
-      console.error(e);
-      setDriveStatus("Drive: errore upload (vedi console)");
-    }
-  });
-}
-
-if (btnUploadProcessedWav) {
-  btnUploadProcessedWav.addEventListener("click", async () => {
-    try {
-      setDriveStatus("Drive: preparo upload...");
-      const folderId = await getOrCreateAuroraFolderId();
-      const wavBlob = await getProcessedWavBlob();
-      const filename = safeTimestampName("wav").replace("Aurora_", "Aurora_fx_");
-      setDriveStatus("Drive: caricamento WAV Effects...");
-      const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
-      setDriveStatus(`Drive: caricato (${filename})`);
-      console.log("Drive fileId (fx):", fileId);
-    } catch (e) {
-      console.error(e);
-      setDriveStatus("Drive: errore upload (vedi console)");
-    }
-  });
-}
-
-// Parameters → update audio graph and local paramValues
-function updateParam(id, v) {
-  paramValues[id] = v;
-
-  if (id === "gain" && masterGain) masterGain.gain.value = v / 100;
-  else if (id === "lowpass" && lowpassFilter) lowpassFilter.frequency.value = v;
-  else if (id === "highpass" && highpassFilter) highpassFilter.frequency.value = v;
-  else if (id === "delayTime" && delayNode) delayNode.delayTime.value = v;
-  else if (id === "reverbMix" && dryGain && wetGain) {
-    wetGain.gain.value = v;
-    dryGain.gain.value = 1 - v;
-  }
-}
-
-// Update knob value label
-function updateValLabel(id, v) {
-  const el = document.getElementById(id + "Val");
-  if (!el) return;
-  if (id === "lowpass" || id === "highpass") el.textContent = Math.round(v);
-  else el.textContent = v.toFixed(2);
-}
-
-// Knob behavior
-const knobElems = document.querySelectorAll(".knob");
-
-knobElems.forEach(knob => {
-  const id = knob.dataset.target;
-  const min = +knob.dataset.min;
-  const max = +knob.dataset.max;
-  const step = +knob.dataset.step || 0.01;
-
-  let value = paramValues[id];
-  let angle = valueToAngle(value, min, max);
-  let dragging = false;
-  let startY, startAngle;
-
-  knob.style.transform = `rotate(${angle}deg)`;
-
-let startMouseAngle = 0;
-
-function mouseAngleDeg(ev, element) {
-  const r = element.getBoundingClientRect();
-  const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2;
-  const dx = ev.clientX - cx;
-  const dy = ev.clientY - cy;
-  return Math.atan2(dy, dx) * (180 / Math.PI); // -180..180
-}
-
-knob.addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  dragging = true;
-
-  lastMouseAngle = mouseAngleDeg(e, knob);
-
-
-  document.body.style.userSelect = "none";
-});
-
-window.addEventListener("mouseup", () => {
-  dragging = false;
-  document.body.style.userSelect = "";
-});
-
-window.addEventListener("mousemove", (e) => {
-  if (!dragging) return;
-
-  const currentMouseAngle = mouseAngleDeg(e, knob);
-  let delta = currentMouseAngle - lastMouseAngle;
-
-if (delta > 180) delta -= 360;
-if (delta < -180) delta += 360;
-
-const speed = e.shiftKey ? 0.35 : 1.0;
-angle = clamp(angle + delta * speed, -135, 135);
-
-lastMouseAngle = currentMouseAngle;
-
-
-  knob.style.transform = `rotate(${angle}deg)`;
-
-  const t = (angle + 135) / 270;
-  const raw = lerp(min, max, t);
-  const v = Math.round(raw / step) * step;
-
-  value = v;
-  updateParam(id, v);
-  updateValLabel(id, v);
-});
-
-
-  updateValLabel(id, value);
-  updateParam(id, value);
-});
-
-// Application of the presets
-function applyPreset(name) {
-  initAudioGraph();
-
-  const preset = presetsConfig[name];
-  if (!preset) return;
-
-  const p = preset.params;
-
-  const knobs = document.querySelectorAll(".knob");
-
-  knobs.forEach(k => {
-  const id = k.dataset.target;
-
-  // ⛔ il volume NON deve essere toccato dai preset
-  if (id === "gain") return;
-
-  if (!(id in p)) return;
-
-  const val = p[id];
-
-  paramValues[id] = val;
-  updateParam(id, val);
-  updateValLabel(id, val);
-
-  const min = +k.dataset.min;
-  const max = +k.dataset.max;
-  k.style.transform = `rotate(${valueToAngle(val, min, max)}deg)`;
-});
-
-}
-
-// Stop waveform animation before leaving the page
-window.addEventListener("beforeunload", () => {
-  if (animationId) cancelAnimationFrame(animationId);
-});
