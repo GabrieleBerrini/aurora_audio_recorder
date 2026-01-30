@@ -48,6 +48,32 @@ body {
   opacity: 0.8;
 }
 
+/* Waveform Canva and Logo */
+.waveform-container {
+  position: relative;
+  width: 100%;
+  padding-top: 160px;
+}
+
+canvas#waveform {
+  width: 100%;  
+  height: 150px; 
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #111827;
+  display: block;  
+}
+
+.logo {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 220px;
+  pointer-events: none;
+  z-index: 10;
+}
+
 /* Standard Buttons */
 button {
   background: #2563eb;
@@ -152,7 +178,7 @@ button:disabled {
   opacity: 0.8;
 }
 
-/* Presets */
+/* Presets Buttons */
 .preset-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -190,30 +216,4 @@ button:disabled {
 
 .drive-row button {
   min-width: 180px;
-}
-
-/* Waveform Canva and Logo */
-.waveform-container {
-  position: relative;
-  width: 100%;
-  padding-top: 160px;
-}
-
-canvas#waveform {
-  width: 100%;  
-  height: 150px; 
-  background: #000;
-  border-radius: 6px;
-  border: 1px solid #111827;
-  display: block;  
-}
-
-.logo {
-  position: absolute;
-  top: -60px;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 220px;
-  pointer-events: none;
-  z-index: 10;
 }
