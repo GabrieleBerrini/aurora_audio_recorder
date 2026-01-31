@@ -221,30 +221,30 @@ const knobElems = document.querySelectorAll(".knob");
 
 knobElems.forEach(knob => {
   const id = knob.dataset.target;
-  const min = +knob.dataset.min;
+  const min = +knob.dataset.min; // The + operator is necessary to convert strings to numbers
   const max = +knob.dataset.max;
-  const step = +knob.dataset.step || 0.01;
+  const step = +knob.dataset.step || 0.01; // 0.01 is used as default step value
 
   let value = paramValues[id];
   let angle = valueToAngle(value, min, max);
   let dragging = false;
-  let startY, startAngle;
 
-  knob.style.transform = `rotate(${angle}deg)`;
+  knob.style.transform = `rotate(${angle}deg)`; // To let the knobs be in the right default position once the page is loaded
 
 let startMouseAngle = 0;
 
+// Function to get the mouse angle relative to the center of the knob
 function mouseAngleDeg(ev, element) {
-  const r = element.getBoundingClientRect();
+  const r = element.getBoundingClientRect(); // To get dimensions and relative position of the element with respect to the viewport
   const cx = r.left + r.width / 2;
   const cy = r.top + r.height / 2;
-  const dx = ev.clientX - cx;
+  const dx = ev.clientX - cx; // "clientX" and "clientY" give the mouse position relative to the viewport, so this two operations are useful to get the mouse position relative to the center of the knob
   const dy = ev.clientY - cy;
   return Math.atan2(dy, dx) * (180 / Math.PI);
 }
 
 knob.addEventListener("mousedown", (e) => {
-  e.preventDefault();
+  e.preventDefault(); // To prevent text selection while dragging ("preventDefault" unables the default browser behavior for the event)
   dragging = true;
 
   lastMouseAngle = mouseAngleDeg(e, knob);
@@ -303,13 +303,13 @@ function applyPreset(name) {
   knobs.forEach(k => {
   const id = k.dataset.target;
 
-  if (id === "gain") return;
+  if (id === "gain") return; // The gain doesn't vary due to the application of the presets
 
   if (!(id in p)) return;
 
   const val = p[id];
 
-  paramValues[id] = val;
+  paramValues[id] = val; // Update internal state
   updateParam(id, val);
   updateValLabel(id, val);
 
