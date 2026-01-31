@@ -43,11 +43,6 @@ body {
   gap: 6px;
 }
 
-#status {
-  font-size: 12px;
-  opacity: 0.8;
-}
-
 /* Waveform Canva and Logo */
 .waveform-container {
   position: relative;
@@ -120,6 +115,11 @@ button:disabled {
   inset: 7px;
   background: #fecaca;
   border-radius: 4px;
+}
+
+#status {
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 /* Knobs */
