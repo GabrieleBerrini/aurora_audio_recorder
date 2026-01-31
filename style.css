@@ -217,3 +217,8 @@ button:disabled {
 .drive-row button {
   min-width: 180px;
 }
+
+#driveStatus {
+  font-size: 12px;
+  opacity: 0.8;
+}
