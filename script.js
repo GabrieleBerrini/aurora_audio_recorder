@@ -383,9 +383,9 @@ window.addEventListener("beforeunload", () => {
 // MIC RECORDING
 // ======================================================================
 
-btnStartRec.addEventListener("click", async () => {
+btnStartRec.addEventListener("click", async () => { // async in order to be able to use await inside it
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); // Mic authorization
     mediaRecorder = new MediaRecorder(stream);
     recordedChunks = [];
 
@@ -393,23 +393,10 @@ btnStartRec.addEventListener("click", async () => {
       if (e.data.size) recordedChunks.push(e.data);
     };
 
-    mediaRecorder.onstop = () => {
-      audioBlob = new Blob(recordedChunks, { type: "audio/webm" });
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
-      audioUrl = URL.createObjectURL(audioBlob);
-      player.src = audioUrl;
-
-      btnPlayProcessed.disabled = false;
-      btnDownloadWav.disabled = false;
-      btnDownloadProcessedWav.disabled = false;
-      statusEl.textContent = "The Recording Is Ready";
-
-      refreshDriveButtons();
-    };
-
     mediaRecorder.start();
     recStartTime = performance.now();
 
+    // To update and show the recording timer
     if (recTimerId) clearInterval(recTimerId);
     recTimerId = setInterval(() => {
     const elapsed = (performance.now() - recStartTime) / 1000;
@@ -426,14 +413,28 @@ btnStartRec.addEventListener("click", async () => {
 });
 
 btnStopRec.addEventListener("click", () => {
+  mediaRecorder.onstop = () => {
+    audioBlob = new Blob(recordedChunks, { type: "audio/webm" });
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    audioUrl = URL.createObjectURL(audioBlob);
+    player.src = audioUrl;
+
+    btnPlayProcessed.disabled = false;
+    btnDownloadWav.disabled = false;
+    btnDownloadProcessedWav.disabled = false;
+    statusEl.textContent = "The Recording Is Ready";
+
+    refreshDriveButtons();
+  };
+
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    mediaRecorder.stream.getTracks().forEach(t => t.stop()); // Disconnect the mic
   }
   if (recTimerId) {
-  clearInterval(recTimerId);
-  recTimerId = null;
-}
+    clearInterval(recTimerId);
+    recTimerId = null;
+  }
 
   btnStartRec.disabled = false;
   btnStopRec.disabled = true;
