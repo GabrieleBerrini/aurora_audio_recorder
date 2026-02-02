@@ -408,7 +408,7 @@ btnStartRec.addEventListener("click", async () => { // async in order to be able
     statusEl.textContent = "Recording...";
   } catch (e) {
     console.error(e);
-    statusEl.textContent = "Error: The Mic Is On";
+    statusEl.textContent = "Error: the mic is on";
   }
 });
 
@@ -422,7 +422,7 @@ btnStopRec.addEventListener("click", () => {
     btnPlayProcessed.disabled = false;
     btnDownloadWav.disabled = false;
     btnDownloadProcessedWav.disabled = false;
-    statusEl.textContent = "The Recording Is Ready";
+    statusEl.textContent = "The recording is ready";
 
     refreshDriveButtons();
   };
@@ -508,7 +508,6 @@ btnPlayProcessed.addEventListener("click", async () => {
     player.currentTime = 0;
   }
 
-  // Stop previous processed source if any
   if (activeProcessedSource) {
     try {
       activeProcessedSource.stop();
@@ -545,15 +544,14 @@ btnDownloadProcessedWav.addEventListener("click", async () => {
   if (!audioBlob) return;
 
   const arr = await audioBlob.arrayBuffer();
-
-  const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const probeCtx = new (window.AudioContext || window.webkitAudioContext)(); // The "||" form is used for compatibility with different versions of browsers
   const decoded = await probeCtx.decodeAudioData(arr);
   const duration = decoded.duration;
   const sampleRate = decoded.sampleRate;
   probeCtx.close();
 
   const length = Math.ceil(duration * sampleRate);
-  const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, length, sampleRate);
+  const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, length, sampleRate); // Mono output is used for simplicity (all the parameters don't deal with stereo effects)
 
   const source = offlineCtx.createBufferSource();
   source.buffer = decoded;
@@ -604,7 +602,7 @@ btnDownloadProcessedWav.addEventListener("click", async () => {
   const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
 
   downloadBlob(wavBlob, "Recording_with_effects.wav");
-  statusEl.textContent = "The Recording with Effects Is Ready";
+  statusEl.textContent = "The recording with effects is ready";
 });
 
 // ======================================================================
@@ -619,13 +617,13 @@ function initDriveAuth() {
 
   // To notify just in case the client ID must be changed or set
   if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR_CLIENT_ID_HERE")) {
-    setDriveStatus("Drive: inserisci GOOGLE_CLIENT_ID in script.js");
+    setDriveStatus("Drive: insert GOOGLE_CLIENT_ID in script.js");
     btnAuthDrive.disabled = true;
     return;
   }
 
   btnAuthDrive.addEventListener("click", () => {
-    setDriveStatus("Drive: in autorizzazione...");
+    setDriveStatus("Drive: authorization in progress...");
     tokenClient.requestAccessToken({ prompt: "consent" }); // This function generates the Google consent pop-up
   });
 
@@ -633,7 +631,7 @@ function initDriveAuth() {
     callback: (resp) => { // This function is called when requestAccessToken completes and passes the value of resp
       driveAccessToken = resp.access_token;
       driveFolderIdCache = null; // To force the token to be requested again next time (every time you initialize the web app you have to get Google Drive authorization)
-      setDriveStatus("Drive: autorizzato");
+      setDriveStatus("Drive: authorized");
       refreshDriveButtons();
     },
   });
@@ -673,17 +671,17 @@ function canUploadNow() {
 if (btnUploadWav) {
   btnUploadWav.addEventListener("click", async () => {
     try {
-      setDriveStatus("Drive: preparo upload...");
+      setDriveStatus("Drive: upload in progress...");
       const folderId = await getOrCreateAuroraFolderId();
       const wavBlob = await getRawWavBlob();
       const filename = safeTimestampName("wav");
-      setDriveStatus("Drive: caricamento WAV Mic...");
+      setDriveStatus("Drive: loading WAV...");
       const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
-      setDriveStatus(`Drive: caricato (${filename})`);
+      setDriveStatus(`Drive: uploaded (${filename})`);
       console.log("Drive fileId (mic):", fileId);
     } catch (e) {
       console.error(e);
-      setDriveStatus("Drive: errore upload (vedi console)");
+      setDriveStatus("Drive: upload failed");
     }
   });
 }
@@ -691,17 +689,17 @@ if (btnUploadWav) {
 if (btnUploadProcessedWav) {
   btnUploadProcessedWav.addEventListener("click", async () => {
     try {
-      setDriveStatus("Drive: preparo upload...");
+      setDriveStatus("Drive: upload in progress...");
       const folderId = await getOrCreateAuroraFolderId();
       const wavBlob = await getProcessedWavBlob();
       const filename = safeTimestampName("wav").replace("Aurora_", "Aurora_fx_");
-      setDriveStatus("Drive: caricamento WAV Effects...");
+      setDriveStatus("Drive: loading WAV with effects...");
       const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
-      setDriveStatus(`Drive: caricato (${filename})`);
+      setDriveStatus(`Drive: uploaded (${filename})`);
       console.log("Drive fileId (fx):", fileId);
     } catch (e) {
       console.error(e);
-      setDriveStatus("Drive: errore upload (vedi console)");
+      setDriveStatus("Drive: upload failed");
     }
   });
 }
@@ -732,7 +730,7 @@ async function uploadBlobToDriveResumable(blob, filename, mimeType, folderId) {
 
   if (!start.ok) throw new Error(await start.text());
   const uploadUrl = start.headers.get("Location");
-  if (!uploadUrl) throw new Error("Upload URL mancante (Location header)");
+  if (!uploadUrl) throw new Error("Missing upload URL");
 
   // 2) upload data
   const put = await fetch(uploadUrl, {
@@ -782,14 +780,14 @@ async function getOrCreateAuroraFolderId() {
 }
 
 async function driveFetch(url, options = {}) {
-  if (!driveAccessToken) throw new Error("Drive non autorizzato");
+  if (!driveAccessToken) throw new Error("Drive not authorized");
   const headers = new Headers(options.headers || {});
   headers.set("Authorization", `Bearer ${driveAccessToken}`);
   return fetch(url, { ...options, headers });
 }
 
 async function getRawWavBlob() {
-  if (!audioBlob) throw new Error("Nessuna registrazione");
+  if (!audioBlob) throw new Error("No recording available");
   initAudioGraph();
   const arrayBuffer = await audioBlob.arrayBuffer();
   const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
@@ -798,7 +796,7 @@ async function getRawWavBlob() {
 }
 
 async function getProcessedWavBlob() {
-  if (!audioBlob) throw new Error("Nessuna registrazione");
+  if (!audioBlob) throw new Error("No recording available");
 
   const arr = await audioBlob.arrayBuffer();
   const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
