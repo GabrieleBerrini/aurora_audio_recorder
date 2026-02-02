@@ -118,7 +118,7 @@ button:disabled {
 }
 
 #status {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.8;
 }
 
@@ -219,6 +219,8 @@ button:disabled {
 }
 
 #driveStatus {
+  justify-content: center;
+  display: flex;
   font-size: 12px;
   opacity: 0.8;
 }

@@ -470,17 +470,31 @@ player.addEventListener("ended", () => {
 // DOWNLOAD RAW WAV
 // ======================================================================
 
-btnDownloadWav.addEventListener("click", async () => {
-  if (!audioBlob) return;
-  initAudioGraph();
-
-  const arrayBuffer = await audioBlob.arrayBuffer();
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  const wavBuffer = audioBufferToWav(audioBuffer);
-  const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
-
-  downloadBlob(wavBlob, "Recording.wav");
+btnDownloadWav.addEventListener("click", () => {
+  downloadWav({getBlobFn: getRawWavBlob, prefix: "Aurora_"});
 });
+
+async function downloadWav({getBlobFn, prefix}) {
+  if (!audioBlob) return;
+
+  try {
+    const filename = safeTimestampName("wav", prefix);
+    const wavBlob = await getBlobFn();
+    downloadBlob(wavBlob, filename);
+    statusEl.textContent = `Downloaded - ${filename}`;
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = "Error while exporting the file";
+  }
+}
+
+// To generate the file name with a timestamp
+function safeTimestampName(ext, prefix) {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+  return `${prefix}${stamp}.${ext}`;
+}
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -492,6 +506,16 @@ function downloadBlob(blob, filename) {
   a.click();
   URL.revokeObjectURL(url);
   document.body.removeChild(a);
+}
+
+
+async function getRawWavBlob() {
+  if (!audioBlob) throw new Error("No recording available");
+  initAudioGraph();
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  const wavBuffer = audioBufferToWav(audioBuffer);
+  return new Blob([wavBuffer], { type: "audio/wav" });
 }
 
 // ======================================================================
@@ -540,18 +564,22 @@ btnPlayProcessed.addEventListener("click", async () => {
 // DOWNLOAD WAV WITH EFFECTS
 // ======================================================================
 
-btnDownloadProcessedWav.addEventListener("click", async () => {
-  if (!audioBlob) return;
+btnDownloadProcessedWav.addEventListener("click", () => {
+  downloadWav({getBlobFn: getProcessedWavBlob, prefix: "Aurora_fx_"});
+});
+
+async function getProcessedWavBlob() {
+  if (!audioBlob) throw new Error("No recording available");
 
   const arr = await audioBlob.arrayBuffer();
-  const probeCtx = new (window.AudioContext || window.webkitAudioContext)(); // The "||" form is used for compatibility with different versions of browsers
+  const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
   const decoded = await probeCtx.decodeAudioData(arr);
   const duration = decoded.duration;
   const sampleRate = decoded.sampleRate;
   probeCtx.close();
 
   const length = Math.ceil(duration * sampleRate);
-  const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, length, sampleRate); // Mono output is used for simplicity (all the parameters don't deal with stereo effects)
+  const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, length, sampleRate);
 
   const source = offlineCtx.createBufferSource();
   source.buffer = decoded;
@@ -599,11 +627,8 @@ btnDownloadProcessedWav.addEventListener("click", async () => {
   source.start(0);
   const rendered = await offlineCtx.startRendering();
   const wavBuffer = audioBufferToWav(rendered);
-  const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
-
-  downloadBlob(wavBlob, "Recording_with_effects.wav");
-  statusEl.textContent = "The recording with effects is ready";
-});
+  return new Blob([wavBuffer], { type: "audio/wav" });
+}
 
 // ======================================================================
 // GOOGLE DRIVE AUTHORIZATION
@@ -674,10 +699,10 @@ if (btnUploadWav) {
       setDriveStatus("Drive: upload in progress...");
       const folderId = await getOrCreateAuroraFolderId();
       const wavBlob = await getRawWavBlob();
-      const filename = safeTimestampName("wav");
+      const filename = safeTimestampName("wav", "Aurora_");
       setDriveStatus("Drive: loading WAV...");
       const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
-      setDriveStatus(`Drive: uploaded (${filename})`);
+      setDriveStatus(`Drive: uploaded - ${filename}`);
       console.log("Drive fileId (mic):", fileId);
     } catch (e) {
       console.error(e);
@@ -692,10 +717,10 @@ if (btnUploadProcessedWav) {
       setDriveStatus("Drive: upload in progress...");
       const folderId = await getOrCreateAuroraFolderId();
       const wavBlob = await getProcessedWavBlob();
-      const filename = safeTimestampName("wav").replace("Aurora_", "Aurora_fx_");
+      const filename = safeTimestampName("wav", "Aurora_fx_");
       setDriveStatus("Drive: loading WAV with effects...");
       const fileId = await uploadBlobToDriveResumable(wavBlob, filename, "audio/wav", folderId);
-      setDriveStatus(`Drive: uploaded (${filename})`);
+      setDriveStatus(`Drive: uploaded - ${filename}`);
       console.log("Drive fileId (fx):", fileId);
     } catch (e) {
       console.error(e);
@@ -704,20 +729,12 @@ if (btnUploadProcessedWav) {
   });
 }
 
-function safeTimestampName(ext) {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  const stamp = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
-  return `Aurora_${stamp}.${ext}`;
-}
-
 async function uploadBlobToDriveResumable(blob, filename, mimeType, folderId) {
   const metadata = {
     name: filename,
     parents: [folderId],
   };
 
-  // 1) start session
   const start = await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
     method: "POST",
     headers: {
@@ -732,7 +749,6 @@ async function uploadBlobToDriveResumable(blob, filename, mimeType, folderId) {
   const uploadUrl = start.headers.get("Location");
   if (!uploadUrl) throw new Error("Missing upload URL");
 
-  // 2) upload data
   const put = await fetch(uploadUrl, {
     method: "PUT",
     headers: {
@@ -747,10 +763,10 @@ async function uploadBlobToDriveResumable(blob, filename, mimeType, folderId) {
   return data.id;
 }
 
+// To create the Drive folder or get it if it already exists
 async function getOrCreateAuroraFolderId() {
   if (driveFolderIdCache) return driveFolderIdCache;
 
-  // Cerca cartella per nome (My Drive). Se esiste, prende la prima.
   const q = `name='${DRIVE_FOLDER_NAME.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
   const listUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
 
@@ -762,7 +778,6 @@ async function getOrCreateAuroraFolderId() {
     return driveFolderIdCache;
   }
 
-  // Crea cartella
   const createUrl = "https://www.googleapis.com/drive/v3/files";
   const body = {
     name: DRIVE_FOLDER_NAME,
@@ -784,75 +799,4 @@ async function driveFetch(url, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Authorization", `Bearer ${driveAccessToken}`);
   return fetch(url, { ...options, headers });
-}
-
-async function getRawWavBlob() {
-  if (!audioBlob) throw new Error("No recording available");
-  initAudioGraph();
-  const arrayBuffer = await audioBlob.arrayBuffer();
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  const wavBuffer = audioBufferToWav(audioBuffer);
-  return new Blob([wavBuffer], { type: "audio/wav" });
-}
-
-async function getProcessedWavBlob() {
-  if (!audioBlob) throw new Error("No recording available");
-
-  const arr = await audioBlob.arrayBuffer();
-  const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const decoded = await probeCtx.decodeAudioData(arr);
-  const duration = decoded.duration;
-  const sampleRate = decoded.sampleRate;
-  probeCtx.close();
-
-  const length = Math.ceil(duration * sampleRate);
-  const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, length, sampleRate);
-
-  const source = offlineCtx.createBufferSource();
-  source.buffer = decoded;
-
-  const lp = offlineCtx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = paramValues.lowpass;
-
-  const hp = offlineCtx.createBiquadFilter();
-  hp.type = "highpass";
-  hp.frequency.value = paramValues.highpass;
-
-  const del = offlineCtx.createDelay(5.0);
-  del.delayTime.value = paramValues.delayTime;
-
-  const fb = offlineCtx.createGain();
-  fb.gain.value = 0.3;
-  del.connect(fb);
-  fb.connect(del);
-
-  const conv = offlineCtx.createConvolver();
-  conv.buffer = createReverbImpulse(offlineCtx, 2.5, 2.0);
-
-  const dry = offlineCtx.createGain();
-  const wet = offlineCtx.createGain();
-  const master = offlineCtx.createGain();
-
-  master.gain.value = paramValues.gain;
-  const mix = paramValues.reverbMix;
-  dry.gain.value = 1 - mix;
-  wet.gain.value = mix;
-
-  source.playbackRate.value = paramValues.pitch;
-
-  source.connect(lp);
-  lp.connect(hp);
-  hp.connect(del);
-  del.connect(dry);
-  del.connect(conv);
-  conv.connect(wet);
-  dry.connect(master);
-  wet.connect(master);
-  master.connect(offlineCtx.destination);
-
-  source.start(0);
-  const rendered = await offlineCtx.startRendering();
-  const wavBuffer = audioBufferToWav(rendered);
-  return new Blob([wavBuffer], { type: "audio/wav" });
 }
