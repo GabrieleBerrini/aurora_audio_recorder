@@ -12,7 +12,7 @@ let mediaElementSource = null;
 
 // Google Drive state
 const GOOGLE_CLIENT_ID = "704802154881-t0b03q9dc11ijifmopp1f662rnh4hiuf.apps.googleusercontent.com"; 
-const DRIVE_FOLDER_NAME = "Aurora Registrazioni";
+const DRIVE_FOLDER_NAME = "Aurora Recordings";
 const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
 
 let tokenClient = null;
