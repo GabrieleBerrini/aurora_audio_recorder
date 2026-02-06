@@ -249,7 +249,6 @@ knob.addEventListener("mousedown", (e) => {
 
   lastMouseAngle = mouseAngleDeg(e, knob);
 
-
   document.body.style.userSelect = "none";
 });
 
@@ -272,7 +271,6 @@ angle = clamp(angle + delta * speed, -135, 135);
 
 lastMouseAngle = currentMouseAngle;
 
-
   knob.style.transform = `rotate(${angle}deg)`;
 
   const t = (angle + 135) / 270;
@@ -283,7 +281,6 @@ lastMouseAngle = currentMouseAngle;
   updateParam(id, v);
   updateValLabel(id, v);
 });
-
 
   updateValLabel(id, value);
   updateParam(id, value);
