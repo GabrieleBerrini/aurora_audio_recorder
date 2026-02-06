@@ -405,7 +405,7 @@ btnStartRec.addEventListener("click", async () => { // async in order to be able
     statusEl.textContent = "Recording...";
   } catch (e) {
     console.error(e);
-    statusEl.textContent = "Error: the mic is on";
+    statusEl.textContent = "Error";
   }
 });
 
