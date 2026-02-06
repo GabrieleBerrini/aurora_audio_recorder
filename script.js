@@ -54,19 +54,19 @@ const knobsConfig = [
 
 // Parameter initial values
 const paramValues = {
-  gain: 0.5,
+  gain: 1.00,
   pitch: 1.00,
   lowpass: 20000,
   highpass: 10,
   delayTime: 0,
-  reverbMix: 0.3
+  reverbMix: 0.0
 };
 
 // Presets configuration
 const presetsConfig = {
   clean: {
     label: "Clean",
-    params: { lowpass: 20000, highpass: 10, delayTime: 0, reverbMix: 0.1, pitch: 1 }
+    params: { lowpass: 20000, highpass: 20, delayTime: 0, reverbMix: 0.0, pitch: 1 }
   },
   phone: {
     label: "Phone",
