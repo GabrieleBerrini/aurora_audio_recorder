@@ -79,10 +79,6 @@ const presetsConfig = {
   lofi: {
     label: "Lo‑Fi",
     params: { lowpass: 5000, highpass: 150, delayTime: 0.12, reverbMix: 0.4, pitch: 0.9 }
-  },
-  null: {
-    label: "Probe",
-    params: { lowpass: 4000, highpass: 1000, delayTime: 0.50, reverbMix: 0.7, pitch: 1.20 }
   }
 };
 
