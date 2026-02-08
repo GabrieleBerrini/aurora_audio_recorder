@@ -44,12 +44,13 @@ const driveStatusEl = document.getElementById("driveStatus");
 
 // Knobs configuration
 const knobsConfig = [
-  { id: "gain",      label: "Volume",  min: 0,   max: 100,   step: 1,    value: 50 },
-  { id: "pitch",     label: "Pitch",   min: 0.5, max: 2.0,   step: 0.01, value: 1.00 },
-  { id: "lowpass",   label: "Lowpass Filter", min: 200, max: 20000, step: 1,    value: 20000 },
-  { id: "highpass",  label: "Highpass Filter",min: 10,  max: 5000,  step: 1,    value: 10 },
-  { id: "delayTime", label: "Delay",   min: 0,   max: 0.5,   step: 0.01, value: 0 },
-  { id: "reverbMix", label: "Reverb",  min: 0,   max: 1,     step: 0.1,  value: 0.3 }
+  { id: "gain", label: "Volume", min: 0, max: 100, step: 1, value: 50 },
+  { id: "pitch", label: "Pitch", min: 0.5, max: 2.0, step: 0.01, value: 1.00 },
+  { id: "lowpass", label: "Lowpass Filter", min: 200, max: 20000, step: 1, value: 20000 },
+  { id: "highpass", label: "Highpass Filter", min: 10, max: 5000, step: 1, value: 10 },
+  { id: "delayTime", label: "Delay", min: 0, max: 0.5, step: 0.01, value: 0 },
+  { id: "reverbMix", label: "Reverb", min: 0, max: 1, step: 0.1, value: 0.3 },
+  { id: "bass", label: "Bass", min: 0, max: 100, step: 1, value: 50 }
 ];
 
 // Parameter initial values
