@@ -49,8 +49,7 @@ const knobsConfig = [
   { id: "lowpass", label: "Lowpass Filter", min: 200, max: 20000, step: 1, value: 20000 },
   { id: "highpass", label: "Highpass Filter", min: 10, max: 5000, step: 1, value: 10 },
   { id: "delayTime", label: "Delay", min: 0, max: 0.5, step: 0.01, value: 0 },
-  { id: "reverbMix", label: "Reverb", min: 0, max: 1, step: 0.1, value: 0.3 },
-  { id: "bass", label: "Bass", min: 0, max: 100, step: 1, value: 50 }
+  { id: "reverbMix", label: "Reverb", min: 0, max: 1, step: 0.1, value: 0.3 }
 ];
 
 // Parameter initial values
@@ -80,6 +79,10 @@ const presetsConfig = {
   lofi: {
     label: "Lo‑Fi",
     params: { lowpass: 5000, highpass: 150, delayTime: 0.12, reverbMix: 0.4, pitch: 0.9 }
+  },
+  null: {
+    label: "Probe",
+    params: { lowpass: 4000, highpass: 1000, delayTime: 0.50, reverbMix: 0.7, pitch: 1.20 }
   }
 };
 
